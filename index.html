@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Snake!</title>
+</head>
+<body>
+  <div style = "display: flex;">
+    <div>
+      <canvas id="canvas" width="400" height="400"></canvas>
+    </div>
+    <iv style = "margin: 40px;">
+      <p style = "padding-bottom: 20px;">Snake</p>
+      <p style = "padding-bottom: 20px;">WASD Controls (Up, Down, Left, Right)</p>
+      <div style="margin-left: 5px;"> 
+        <p>1. 475 - bwyniemko</p>
+        <p>2. 421 - bwyniemko</p>
+        <p>3. 235 - bwyniemko</p>
+      </div>
+    </div>
+  </div>
+  
+  <!-- <canvas id="canvas" width="400" height="400"></canvas> -->
+    <script src="https://code.jquery.com/jquery-2.1.0.js"></script>
+    <script>
+        var canvas = document.getElementById("canvas");
+        var ctx = canvas.getContext("2d");
+        var width = canvas.width;
+        var height = canvas.height;
+        var blockSize = 10;
+        var widthInBlocks = width / blockSize;
+        var heightInBlocks = height / blockSize;
+        var score = 0;
+        var gameEnd = false;
+
+        var drawBorder = function () {
+            ctx.fillStyle = "Gray";
+            ctx.fillRect(0, 0, width, blockSize);
+            ctx.fillRect(0, height - blockSize, width, blockSize);
+            ctx.fillRect(0, 0, blockSize, height);
+            ctx.fillRect(width - blockSize, 0, blockSize, height);
+        };
+
+        var drawScore = function () {
+            ctx.font = "15px Sans-serif";
+            ctx.fillStyle = "Black";
+            ctx.textAlign = "left";
+            ctx.textBaseline = "top";
+            ctx.fillText("Score: " + score, blockSize, blockSize);
+        };
+
+        var gameOver = function () {
+            clearTimeout(animationTime);
+            ctx.font = "30px Sans-serif";
+            ctx.fillStyle = "Black";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("Game Over", width / 2, height / 2);
+            gameEnd = true;
+        };
+     // Рисуем окружность (используя функцию из главы 14)
+        var circle = function (x, y, radius, fillCircle) {
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, Math.PI * 2, false);
+            if (fillCircle) {
+                ctx.fill();
+            } else {
+                ctx.stroke();
+            }
+        };
+        // Задаем конструктор Block (ячейка)
+        var Block = function (col, row) {
+        this.col = col;
+        this.row = row;
+        };
+        // Рисуем квадрат в позиции ячейки
+        Block.prototype.drawSquare = function (color) {
+            var x = this.col * blockSize;
+            var y = this.row * blockSize;
+            ctx.fillStyle = color;
+            ctx.fillRect(x, y, blockSize-1, blockSize-1);
+        };
+        // Рисуем круг в позиции ячейки
+        Block.prototype.drawCircle = function (color) {
+            var centerX = this.col * blockSize + blockSize / 2;
+            var centerY = this.row * blockSize + blockSize / 2;
+            ctx.fillStyle = color;
+            circle(centerX, centerY, blockSize / 2, true);
+        };
+            // Проверяем, находится ли эта ячейка в той же позиции, что и ячейка
+            // otherBlock
+        Block.prototype.equal = function (otherBlock) {
+            return this.col === otherBlock.col && this.row === otherBlock.row;
+        };
+            // Задаем конструктор Snake
+        var Snake = function () {
+            this.segments = [new Block(7, 5), new Block(6, 5), new Block(5, 5)];
+            this.direction = "right";
+            this.nextDirection = "right";
+            };
+
+        
+        // Рисуем квадратик для каждого сегмента тела змейки
+        Snake.prototype.draw = function () {
+            var randomColour; 
+            for (var i = 0; i < this.segments.length; i++) {
+                var evenNumber = i % 2;
+                if (i === 0) {
+                    randomColour = "black";
+                }
+                else if (evenNumber === 0) {
+                    randomColour = "black";
+                } 
+                else if (evenNumber === 1){
+                    randomColour = "black";
+                } 
+                this.segments[i].drawSquare(randomColour);
+            }    
+        };
+        // Создаем новую голову и добавляем ее к началу змейки, ---------------------------------------------------
+        // чтобы передвинуть змейку в текущем направлении
+        Snake.prototype.move = function () {
+            var head = this.segments[0];
+            var newHead;
+            this.direction = this.nextDirection;
+            if (this.direction === "right") {
+                newHead = new Block(head.col + 1, head.row);
+            } else if (this.direction === "down") {
+                newHead = new Block(head.col, head.row + 1);
+            } else if (this.direction === "left") {
+                newHead = new Block(head.col - 1, head.row);
+            } else if (this.direction === "up") {
+                newHead = new Block(head.col, head.row - 1);
+            }
+            if (this.checkCollision(newHead)) {
+                gameOver();
+                return;
+            }
+
+            this.segments.unshift(newHead);
+            
+            if (newHead.equal(apple.position)) {
+                score++;
+                animationTime = animationTime - 5;
+                apple.move();
+            } else {
+                this.segments.pop();
+            }
+        };
+            // Проверяем, не столкнулась ли змейка со стеной или собственным телом
+        Snake.prototype.checkCollision = function (head) {
+            var leftCollision = (head.col === 0);
+            var topCollision = (head.row === 0);
+            var rightCollision = (head.col === widthInBlocks - 1);
+            var bottomCollision = (head.row === heightInBlocks - 1);
+            var wallCollision = leftCollision || topCollision || rightCollision || bottomCollision;
+            var selfCollision = false;
+            for (var i = 3; i < this.segments.length; i++) {
+                if (head.equal(this.segments[i])) {
+                    selfCollision = true;
+                }
+            }
+            return wallCollision || selfCollision;
+        };
+            // Задаем следующее направление движения змейки на основе нажатой
+            // клавиши
+        Snake.prototype.setDirection = function (newDirection) {
+            if (this.direction === "up" && newDirection === "down") {
+                return;
+            } else if (this.direction === "right" && newDirection === "left") {
+                return;
+            } else if (this.direction === "down" && newDirection === "up") {
+                return;
+            } else if (this.direction === "left" && newDirection === "right") {
+                return;
+            }
+            this.nextDirection = newDirection;
+        };
+            // Задаем конструктор Apple (яблоко)
+            var Apple = function () {
+                this.position = new Block(10, 10);
+            };
+
+        // Рисуем кружок в позиции яблока
+        Apple.prototype.draw = function () {
+            this.position.drawCircle("LimeGreen");
+        };
+        
+        // Перемещаем яблоко в случайную позицию
+        Apple.prototype.move = function () {
+            var samePosition = true;
+            
+            while (samePosition === true) {    
+            var randomCol = Math.floor(Math.random() * (widthInBlocks - 2)) + 1;
+            var randomRow = Math.floor(Math.random() * (heightInBlocks - 2)) + 1;
+            
+            for (var i = 0; i < snake.segments.length; i++){                          
+                if ((snake.segments[i].col !== randomCol)&&(snake.segments[i].row !== randomRow)){ 
+                    samePosition = false;
+                } else if ((snake.segments[i].col === randomCol)&&(snake.segments[i].row === randomRow)){
+                    console.log("samePosition");
+                    samePosition = true;
+                    break; 
+                }
+            }
+        }
+            this.position = new Block(randomCol, randomRow);
+        };
+        // Создаем объект-змейку и объект-яблоко
+        var snake = new Snake();
+        var apple = new Apple();
+        var animationTime = 150;
+        var gameLoop = function () {
+            ctx.clearRect(0, 0, width, height);
+            drawScore();
+            snake.move();
+            snake.draw();
+            apple.draw();
+            drawBorder();
+            setTimeout(gameLoop, animationTime);
+        };
+        gameLoop();
+
+        var directions = {
+            65: "left", 
+            87: "up", 
+            68: "right", 
+            83: "down",
+            32: "space" 
+        };
+        // Задаем обработчик события keydown (клавиши-стрелки)
+            $("body").keydown(function (event) {
+            var newDirection = directions[event.keyCode];
+            if ((newDirection !== undefined)&&(newDirection !== "space")&&(gameEnd === false)) {
+                snake.setDirection(newDirection);     
+            } else if (newDirection === "space") {
+                alert("Pause");
+            }
+        });
+        </script>
+    </body>
+    </html>
